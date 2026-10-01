@@ -1,0 +1,32 @@
+name: Sunrise Izumo Seat Watch
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Restore last state
+        uses: actions/cache@v4
+        with:
+          path: last_state.json
+          key: sunrise-state-${{ github.run_id }}
+          restore-keys: |
+            sunrise-state-
+
+      - name: Run watcher
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python sunrise_izumo_watch.py --dates 2026-10-20,2026-10-21,2026-10-30
