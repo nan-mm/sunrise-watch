@@ -137,9 +137,11 @@ def fetch_seat_statuses(target_date: str) -> list[str] | None:
         print(f"[ERROR] {target_date} のリクエストに失敗しました: {e}")
         return None
 
-    # 文字コードを決め打ちせず、bs4(UnicodeDammit)に自動判定させる方が確実なため
-    # resp.text ではなく resp.content(バイト列)を直接渡す
-    soup = BeautifulSoup(resp.content, "html.parser")
+    # このページは実際にはUTF-8で配信されているが、ページ内の情報(古いmeta等)の
+    # 影響でBeautifulSoupの自動判定がShift-JIS(cp932)と誤判定し、文字化けする
+    # ことが確認されたため、UTF-8に明示的に固定する。
+    html_text = resp.content.decode("utf-8", errors="replace")
+    soup = BeautifulSoup(html_text, "html.parser")
 
     # th内の設備アイコン画像(例: alt="B寝台")まで拾ってしまわないよう、
     # td内の画像(空席状況アイコン)だけに絞り込む。
