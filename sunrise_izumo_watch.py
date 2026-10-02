@@ -50,7 +50,7 @@ ARRIVAL_STATION = "出雲市"
 TARGET_SEAT_TYPE = "シングル"
 
 # 「空きあり」とみなすステータス文字列(e5489の凡例に準拠)
-AVAILABLE_STATUSES = ["空席あり", "残りわずか"]
+AVAILABLE_STATUSES = ["空席あり", "空席残りわずか"]
 
 # 監視したい乗車日(デフォルト)。--dates オプションで実行時に上書き可能
 DEFAULT_TARGET_DATES = ["2026-10-20", "2026-10-21", "2026-10-30"]
@@ -137,13 +137,18 @@ def fetch_seat_statuses(target_date: str) -> list[str] | None:
         print(f"[ERROR] {target_date} のリクエストに失敗しました: {e}")
         return None
 
-    # e5489はShift-JIS(cp932)で配信されていることが多いので明示的に指定
-    resp.encoding = "cp932"
-    soup = BeautifulSoup(resp.text, "html.parser")
+    # 文字コードを決め打ちせず、bs4(UnicodeDammit)に自動判定させる方が確実なため
+    # resp.text ではなく resp.content(バイト列)を直接渡す
+    soup = BeautifulSoup(resp.content, "html.parser")
 
+    # th内の設備アイコン画像(例: alt="B寝台")まで拾ってしまわないよう、
+    # td内の画像(空席状況アイコン)だけに絞り込む。
+    # さらに、既知の空席状況の文言だけに限定してノイズを除外する。
+    known_statuses = {"空席あり", "空席残りわずか", "残席なし"}
     statuses = [
         img["alt"].strip()
-        for img in soup.select("table.seat-status-table img[alt]")
+        for img in soup.select("table.seat-status-table td img[alt]")
+        if img["alt"].strip() in known_statuses
     ]
 
     return statuses or None
